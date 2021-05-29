@@ -1,58 +1,97 @@
-let template;
+import eventCreators from '../model/eventCreators.js'
 
-const createNewTodo = () => {
+let template
+
+const createNewTodoNode = () => {
   if (!template) {
-    template = document.querySelector('#todo-item');
+    template = document.getElementById('todo-item')
   }
 
   return template
     .content
     .firstElementChild
-    .cloneNode(true);
+    .cloneNode(true)
 }
-const getTodoElement = (todo, index, events) => {
-  const {
-    text,
-    completed
-  } = todo;
 
-  const element = createNewTodo();
-
-  element.querySelector('input.edit').value = text;
-  element.querySelector('label').textContent = text;
-
-  if (completed) {
-    element
-      .classList
-      .add('completed')
-    element
-      .querySelector('input.toggle')
-      .checked = true;
+const attachEventsToTodoElement = (element, index, dispatch) => {
+  const deleteHandler = e => dispatch(eventCreators.deleteItem(parseInt(index)))
+  const toggleHandler = e => dispatch(eventCreators.toggleItemCompleted(index))
+  const updateHandler = e => {
+    if (e.key === 'Enter') {
+      element.classList.remove('editing')
+      dispatch(eventCreators.updateItem(index, e.target.value))
+    }
   }
 
   element
     .querySelector('button.destroy')
-    .dataset
-    .index = index;
+    .addEventListener('click', deleteHandler)
 
-  return element;
+  element
+    .querySelector('input.toggle')
+    .addEventListener('click', toggleHandler)
+
+  element
+    .addEventListener('dblclick', () => {
+      element.classList.add('editing')
+      element
+        .querySelector('input.edit').focus()
+    })
+
+  element
+    .querySelector('input.edit')
+    .addEventListener('keypress', updateHandler)
 }
-export default (targetElement,state, events) => {
-  const { todos } = state;
-  const { deleteItem } = events;
-  const newTodoList = targetElement.cloneNode(true);
-  newTodoList.innerHTML = '';
-  todos
-    .map(getTodoElement)
+
+const getTodoElement = (todo, index, dispatch) => {
+  const {
+    text,
+    completed
+  } = todo
+
+  const element = createNewTodoNode()
+
+  element.querySelector('input.edit').value = text
+  element.querySelector('label').textContent = text
+
+  if (completed) {
+    element.classList.add('completed')
+    element
+      .querySelector('input.toggle')
+      .checked = true
+  }
+
+  attachEventsToTodoElement(element, index, dispatch)
+
+  return element
+}
+
+const filterTodos = (todos, filter) => {
+  const isCompleted = todo => todo.completed
+  if (filter === 'Active') {
+    return todos.filter(t => !isCompleted(t))
+  }
+
+  if (filter === 'Completed') {
+    return todos.filter(isCompleted)
+  }
+
+  return [...todos]
+}
+
+export default (targetElement, state, dispatch) => {
+  const { todos, currentFilter } = state
+  const newTodoList = targetElement.cloneNode(true)
+
+  newTodoList.innerHTML = ''
+
+  const filteredTodos = filterTodos(todos, currentFilter)
+
+  filteredTodos
+    .map((todo, index) => getTodoElement(todo, index, dispatch))
     .forEach(element => {
-      newTodoList.appendChild(element);
-    });
+      newTodoList.appendChild(element)
+    })
 
-  newTodoList.addEventListener('click', e => {
-    if(e.target.matches('button.destroy')) {
-      deleteItem(e.target.dataset.index);
-    }
-  })
-
-  return newTodoList;
+  return newTodoList
 }
