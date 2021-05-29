@@ -7,42 +7,29 @@ import applyDiff from './applyDiff.js'
 
 import registry from './registry.js'
 
+import eventBusFactory from './model/eventBus.js';
+import modelFactory from './model/model.js';
+
 registry.add('app', appView)
 registry.add('todos', todosView);
 registry.add('counter', counterView);
 registry.add('filters', filtersView);
 
-const state = {
-  todos: getTodos(),
-  currentFilter: 'All'
-}
 
-const events = {
-  deleteItem: index => {
-    state.todos.splice(index, 1);
-    render();
-  },
-  addItem: text => {
-    state.todos.push({
-      text,
-      completed: false
-    });
-    render();
-  }
-}
+const modifiers = modelFactory();
+const eventBus = eventBusFactory(modifiers);
 
-const render = () => {
+
+
+const render = (state) => {
   window.requestAnimationFrame(() => {
     const main = document.querySelector('#root');
-    const newMain = registry.renderRoot(main, state, events);
+    const newMain = registry.renderRoot(main, state, eventBus.dispatch);
 
     applyDiff(document.body, main, newMain);
   })
 }
 
-window.setInterval(() => {
-  state.todos = getTodos();
-  render();
-}, 5000);
+eventBus.subscribe(render);
 
-render();
+render(eventBus.getState());
